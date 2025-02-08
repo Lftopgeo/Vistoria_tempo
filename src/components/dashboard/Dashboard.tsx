@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import DashboardHeader from "./DashboardHeader";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
+import { createTestInspection } from "@/lib/testData";
 import { ClipboardList, Clock, Plus, Pencil, Trash2 } from "lucide-react";
 import ProjectCard from "./ProjectCard";
 import BottomNav from "./BottomNav";
@@ -248,13 +249,38 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
         <div className="container mx-auto flex justify-center">
-          <Button
-            onClick={() => navigate("/new-inspection")}
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 rounded-full shadow-lg"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Nova Vistoria
-          </Button>
+          <div className="flex gap-4">
+            <Button
+              onClick={() => navigate("/new-inspection")}
+              className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 rounded-full shadow-lg"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Nova Vistoria
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  if (!user) return;
+                  const inspectionId = await createTestInspection(user.id);
+                  toast({
+                    title: "Vistoria de teste criada",
+                    description: "Redirecionando para o relatório...",
+                  });
+                  navigate(`/inspection-report/${inspectionId}`);
+                } catch (error) {
+                  console.error("Error creating test inspection:", error);
+                  toast({
+                    variant: "destructive",
+                    title: "Erro ao criar vistoria de teste",
+                    description: "Tente novamente.",
+                  });
+                }
+              }}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-6 rounded-full shadow-lg"
+            >
+              Criar Vistoria de Teste
+            </Button>
+          </div>
         </div>
       </div>
       <BottomNav />

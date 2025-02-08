@@ -8,9 +8,11 @@ import PropertyRegistration from "./components/property/PropertyRegistration";
 import PropertyEnvironments from "./components/property/PropertyEnvironments";
 import RoomInspection from "./components/inspection/RoomInspection";
 import InspectionSummary from "./components/inspection/InspectionSummary";
+import InspectionReport from "./components/inspection/InspectionReport";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const auth = useAuth();
+  const { user, loading } = auth;
 
   if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
@@ -18,7 +20,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function App() {
+const App: React.FC = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
 
@@ -78,9 +80,17 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/inspection-report/:inspectionId"
+          element={
+            <PrivateRoute>
+              <InspectionReport />
+            </PrivateRoute>
+          }
+        />
       </Routes>
     </ErrorBoundary>
   );
-}
+};
 
 export default App;

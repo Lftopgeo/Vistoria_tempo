@@ -9,6 +9,32 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      users: {
+        Row: {
+          id: string;
+          email: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          email: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       properties: {
         Row: {
           id: string;
@@ -25,8 +51,9 @@ export interface Database {
           city: string | null;
           state: string | null;
           zip_code: string | null;
-          created_by: string | null;
+          created_by: string;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -43,8 +70,9 @@ export interface Database {
           city?: string | null;
           state?: string | null;
           zip_code?: string | null;
-          created_by?: string | null;
+          created_by: string;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -61,8 +89,9 @@ export interface Database {
           city?: string | null;
           state?: string | null;
           zip_code?: string | null;
-          created_by?: string | null;
+          created_by?: string;
           created_at?: string;
+          updated_at?: string;
         };
       };
       inspections: {
@@ -70,28 +99,31 @@ export interface Database {
           id: string;
           property_id: string;
           inspector_id: string;
-          inspection_date: string | null;
-          status: string | null;
+          inspection_date: string;
+          status: string;
           observations: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           property_id: string;
           inspector_id: string;
-          inspection_date?: string | null;
-          status?: string | null;
+          inspection_date: string;
+          status: string;
           observations?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           property_id?: string;
           inspector_id?: string;
-          inspection_date?: string | null;
-          status?: string | null;
+          inspection_date?: string;
+          status?: string;
           observations?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
       };
       rooms: {
@@ -102,6 +134,7 @@ export interface Database {
           description: string | null;
           image_url: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -110,6 +143,7 @@ export interface Database {
           description?: string | null;
           image_url?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -118,35 +152,39 @@ export interface Database {
           description?: string | null;
           image_url?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
       };
       room_items: {
         Row: {
           id: string;
           room_id: string;
-          category: string | null;
+          category: string;
           name: string;
           condition: string;
           description: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           room_id: string;
-          category?: string | null;
+          category: string;
           name: string;
           condition: string;
           description?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           room_id?: string;
-          category?: string | null;
+          category?: string;
           name?: string;
           condition?: string;
           description?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
       };
       item_images: {
@@ -177,9 +215,6 @@ export interface Database {
       [_ in never]: never;
     };
     Enums: {
-      [_ in never]: never;
-    };
-    CompositeTypes: {
       [_ in never]: never;
     };
   };

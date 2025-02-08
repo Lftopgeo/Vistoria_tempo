@@ -11,7 +11,17 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType>(
+  {} as AuthContextType,
+);
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -40,38 +50,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    if (!email || !password) {
+      throw new Error("Email e senha são obrigatórios");
+    }
     try {
-      console.log("Attempting login with:", { email, password });
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) {
-        console.error("Login error:", error);
-        throw error;
-      }
-
-      console.log("Login successful:", data);
+      if (error) throw error;
 
       if (data?.user) {
         setSession(data.session);
         setUser(data.user);
-        toast({
-          title: "Login realizado com sucesso",
-          description: `Bem-vindo, ${data.user.email}!`,
-        });
+        return data;
       }
+
+      throw new Error("Usuário não encontrado");
     } catch (error: any) {
       console.error("Login error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao fazer login",
-        description:
-          error.message === "Invalid login credentials"
-            ? "Email ou senha inválidos"
-            : error.message,
-      });
+      // Check if it's a network error
+      if (!navigator.onLine) {
+        toast({
+          variant: "destructive",
+          title: "Erro de conexão",
+          description:
+            "Verifique sua conexão com a internet e tente novamente.",
+        });
+      } else if (error.message?.includes("FetchError")) {
+        toast({
+          variant: "destructive",
+          title: "Erro de conexão",
+          description:
+            "Não foi possível conectar ao servidor. Tente novamente em alguns instantes.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Erro ao fazer login",
+          description:
+            error.message === "Invalid login credentials"
+              ? "Email ou senha inválidos"
+              : "Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.",
+        });
+      }
       throw error;
     }
   };
@@ -108,12 +131,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }

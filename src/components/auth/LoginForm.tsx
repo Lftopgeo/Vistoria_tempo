@@ -14,32 +14,64 @@ interface LoginFormProps {
 const LoginForm = ({ onSubmit }: LoginFormProps) => {
   const navigate = useNavigate();
   const [email, setEmail] = React.useState("admin@geoapp.com");
-  const [password, setPassword] = React.useState("admin");
+  const [password, setPassword] = React.useState("admin123");
+  const defaultCredentials = {
+    email: "admin@geoapp.com",
+    password: "admin123",
+  };
   const [loading, setLoading] = React.useState(false);
   const { signIn } = useAuth();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      await signIn(email, password);
-      if (onSubmit) {
-        onSubmit(email, password);
+  const handleSubmit = React.useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!email || !password) {
+        toast({
+          variant: "destructive",
+          title: "Erro de validação",
+          description: "Email e senha são obrigatórios",
+        });
+        return;
       }
-      navigate("/dashboard");
-    } catch (error: any) {
-      console.error("Erro no login:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro de autenticação",
-        description: "Verifique suas credenciais e tente novamente.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      setLoading(true);
+
+      try {
+        console.log(
+          "Attempting login with:",
+          email === defaultCredentials.email
+            ? "default credentials"
+            : "custom credentials",
+        );
+        await signIn(email, password);
+
+        if (onSubmit) {
+          onSubmit(email, password);
+        }
+
+        toast({
+          title: "Login realizado com sucesso",
+          description: "Redirecionando para o dashboard...",
+        });
+
+        navigate("/dashboard");
+      } catch (error: any) {
+        console.error("Erro no login:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro de autenticação",
+          description:
+            error.message === "Invalid login credentials"
+              ? "Email ou senha inválidos"
+              : error.message ||
+                "Erro ao fazer login. Por favor, tente novamente.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [email, password, signIn, navigate, onSubmit, toast],
+  );
 
   return (
     <Card className="w-full max-w-md mx-auto bg-white">

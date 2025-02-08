@@ -11,29 +11,29 @@ type Room = Database["public"]["Tables"]["rooms"]["Row"];
 
 const defaultRooms = [
   {
-    name: "Sala de Estar",
-    description: "Espaço aconchegante",
-    image:
-      "https://nvyfgduekqrmsoijfzxo.supabase.co/storage/v1/object/public/Imagens/sala.png?t=2025-01-21T01%3A33%3A06.104Z",
-    status: "Pendente",
-  },
-  {
-    name: "Cozinha",
-    description: "Moderna e equipada",
-    image:
-      "https://images.unsplash.com/photo-1556911220-bff31c812dba?q=80&w=500",
-    status: "Pendente",
-  },
-  {
-    name: "Quarto",
-    description: "Confortável e amplo",
+    name: "quarto",
+    description: "Quarto e suítes",
     image:
       "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?q=80&w=500",
     status: "Pendente",
   },
   {
-    name: "Banheiro",
-    description: "Clean e funcional",
+    name: "sala",
+    description: "Sala de estar e jantar",
+    image:
+      "https://images.unsplash.com/photo-1585128792020-803d29415281?q=80&w=500",
+    status: "Pendente",
+  },
+  {
+    name: "cozinha",
+    description: "Cozinha e área de serviço",
+    image:
+      "https://images.unsplash.com/photo-1556911220-bff31c812dba?q=80&w=500",
+    status: "Pendente",
+  },
+  {
+    name: "banheiro",
+    description: "Banheiros e lavabos",
     image:
       "https://images.unsplash.com/photo-1620626011761-996317b8d101?q=80&w=500",
     status: "Pendente",
@@ -160,7 +160,7 @@ const PropertyEnvironments = () => {
           <h2 className="text-3xl md:text-4xl font-medium text-black mb-8">
             Ambientes da Casa
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
             {defaultRooms.map((room, index) => {
               const existingRoom = rooms.find(
                 (r) => r.name.toLowerCase() === room.name.toLowerCase(),
@@ -181,7 +181,7 @@ const PropertyEnvironments = () => {
                     className="w-full h-40 object-cover"
                   />
                   <div className="flex flex-col items-center gap-2 p-4 w-full bg-white">
-                    <h3 className="text-gray-900 text-2xl font-medium leading-[32px] text-center">
+                    <h3 className="text-gray-900 text-2xl font-medium leading-[32px] text-center capitalize">
                       {room.name}
                     </h3>
                     <p className="text-gray-600 text-lg font-normal leading-[24px] text-center">

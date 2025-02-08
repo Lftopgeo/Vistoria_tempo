@@ -17,25 +17,7 @@ const WelcomeHeader = ({ logoText = "GeoApp" }: WelcomeHeaderProps) => {
       </div>
       {/* Logo Container */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center text-white">
-        <div className="w-24 h-24 mb-4 rounded-xl p-2 bg-[#272525] rounded-l-3xl">
-          <svg viewBox="0 0 100 100" className="w-full h-full flex shadow-xl">
-            {/* House shape */}
-            <path
-              d="M20 90 L20 50 L50 20 L80 50 L80 90 Z"
-              className="fill-[#FFA726]"
-            />
-            {/* Door */}
-            <path d="M45 90 L45 60 L55 60 L55 90" className="fill-[#1A1A1A]" />
-            {/* Sun/Circle */}
-            <circle cx="50" cy="30" r="15" className="fill-[#FFA726]" />
-            {/* Base/Ground */}
-            <path
-              d="M10 90 C30 85, 70 85, 90 90"
-              className="fill-[#FFA726]"
-              strokeWidth="2"
-            />
-          </svg>
-        </div>
+        <div className="w-24 h-24 mb-4 rounded-xl p-2 bg-[#272525] rounded-l-3xl"></div>
         <h1 className="text-4xl font-bold mb-2">
           <span>{logoText.slice(0, 3)}</span>
           <span className="text-[#FFA726]">{logoText.slice(3)}</span>

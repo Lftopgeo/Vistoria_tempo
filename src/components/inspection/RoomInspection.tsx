@@ -18,94 +18,11 @@ interface ChecklistItem {
   description?: string;
 }
 
-const roomData = {
-  "sala-de-estar": {
-    name: "Sala de Estar",
-    description: "Espaço aconchegante",
-    image:
-      "https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?q=80&w=500",
-    checklist: {
-      furniture: [
-        "Sofá em bom estado",
-        "Mesa de centro intacta",
-        "Rack da TV sem arranhões",
-        "Cortinas limpas e funcionando",
-        "Tapete sem manchas",
-        "Almofadas em bom estado",
-      ],
-      finishing: [
-        "Pintura sem manchas",
-        "Piso sem arranhões",
-        "Rodapés alinhados",
-        "Acabamento do teto regular",
-        "Janelas funcionando",
-        "Portas sem problemas",
-      ],
-      lighting: [
-        "Lâmpadas funcionando",
-        "Interruptores funcionando",
-        "Iluminação adequada",
-      ],
-      electrical: [
-        "Tomadas funcionando",
-        "Disjuntores identificados",
-        "Fiação aparente em ordem",
-      ],
-    },
-  },
-  cozinha: {
-    name: "Cozinha",
-    description: "Moderna e equipada",
-    image:
-      "https://images.unsplash.com/photo-1556911220-bff31c812dba?q=80&w=500",
-    checklist: {
-      appliances: [
-        "Fogão funcionando",
-        "Geladeira em ordem",
-        "Microondas operacional",
-        "Pia sem vazamentos",
-      ],
-      cabinets: [
-        "Armários em bom estado",
-        "Gavetas deslizando",
-        "Portas alinhadas",
-      ],
-      countertops: ["Bancadas sem manchas", "Revestimentos intactos"],
-    },
-  },
-  quarto: {
-    name: "Quarto",
-    description: "Confortável e amplo",
-    image:
-      "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?q=80&w=500",
-    checklist: {
-      furniture: [
-        "Cama em bom estado",
-        "Guarda-roupa funcionando",
-        "Criado-mudo intacto",
-      ],
-      comfort: [
-        "Climatização adequada",
-        "Isolamento acústico",
-        "Iluminação natural",
-      ],
-    },
-  },
-  banheiro: {
-    name: "Banheiro",
-    description: "Clean e funcional",
-    image:
-      "https://images.unsplash.com/photo-1620626011761-996317b8d101?q=80&w=500",
-    checklist: {
-      fixtures: [
-        "Vaso sanitário funcionando",
-        "Pia sem vazamentos",
-        "Chuveiro em ordem",
-      ],
-      features: ["Espelho intacto", "Box sem problemas", "Ventilação adequada"],
-    },
-  },
-};
+interface CategoryItem {
+  category: string;
+  name: string;
+  subcategory?: string;
+}
 
 const RoomInspection = () => {
   const navigate = useNavigate();
@@ -119,10 +36,28 @@ const RoomInspection = () => {
   const [checklistItems, setChecklistItems] = React.useState<
     Record<string, ChecklistItem>
   >({});
+  const [categories, setCategories] = React.useState<CategoryItem[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
-  const room = roomData[roomId as keyof typeof roomData];
+  // Fetch inspection categories for the room type
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data, error } = await supabase
+        .from("inspection_item_categories")
+        .select("*")
+        .eq("room_type", roomId);
+
+      if (error) {
+        console.error("Error fetching categories:", error);
+        return;
+      }
+
+      setCategories(data);
+    };
+
+    fetchCategories();
+  }, [roomId]);
 
   useEffect(() => {
     const fetchCurrentInspection = async () => {
@@ -147,10 +82,6 @@ const RoomInspection = () => {
 
     fetchCurrentInspection();
   }, [user]);
-
-  if (!room) {
-    return <div>Ambiente não encontrado</div>;
-  }
 
   const handleConditionSelect = (item: string, condition: Condition) => {
     setChecklistItems((prev) => ({
@@ -239,9 +170,9 @@ const RoomInspection = () => {
         .insert([
           {
             inspection_id: currentInspection,
-            name: room.name,
-            description: room.description,
-            image_url: room.image,
+            name: roomId,
+            description: `Vistoria do ${roomId}`,
+            image_url: null,
           },
         ])
         .select()
@@ -254,7 +185,9 @@ const RoomInspection = () => {
       const itemsToInsert = Object.entries(checklistItems).map(
         ([name, item]) => ({
           room_id: roomData.id,
-          category: "general",
+          category:
+            categories.find((c) => c.name === name)?.category || "geral",
+          subcategory: categories.find((c) => c.name === name)?.subcategory,
           name,
           condition: item.condition,
           description: item.description || "",
@@ -306,6 +239,18 @@ const RoomInspection = () => {
     }
   };
 
+  // Group categories by their main category
+  const groupedCategories = categories.reduce(
+    (acc, item) => {
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    },
+    {} as Record<string, CategoryItem[]>,
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="container mx-auto px-4 py-6">
@@ -320,38 +265,39 @@ const RoomInspection = () => {
         <div className="space-y-6">
           <Card className="p-6">
             <div className="flex gap-4 items-start">
-              <img
-                src={room.image}
-                alt={room.name}
-                className="w-32 h-32 object-cover rounded-lg"
-              />
               <div>
-                <h2 className="text-2xl font-semibold">{room.name}</h2>
-                <p className="text-gray-600">{room.description}</p>
+                <h2 className="text-2xl font-semibold capitalize">{roomId}</h2>
+                <p className="text-gray-600">Vistoria detalhada do ambiente</p>
               </div>
             </div>
           </Card>
 
-          {Object.entries(room.checklist).map(([category, items]) => (
+          {Object.entries(groupedCategories).map(([category, items]) => (
             <Card key={category} className="p-6">
               <h3 className="text-lg font-semibold capitalize mb-4">
-                {category}
+                {category.replace("_", " ")}
               </h3>
               <div className="space-y-6">
                 {items.map((item) => {
-                  const itemData = checklistItems[item] || {};
+                  const itemData = checklistItems[item.name] || {};
                   return (
                     <div
-                      key={item}
+                      key={item.name}
                       className="space-y-4 pb-4 border-b border-gray-200 last:border-0"
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-medium">{item}</p>
+                          <p className="font-medium">{item.name}</p>
                           {itemData.condition && (
                             <Badge
                               variant="outline"
-                              className={`mt-2 ${itemData.condition === "bom" ? "bg-green-100 text-green-800" : itemData.condition === "ruim" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
+                              className={`mt-2 ${
+                                itemData.condition === "bom"
+                                  ? "bg-green-100 text-green-800"
+                                  : itemData.condition === "ruim"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                              }`}
                             >
                               {itemData.condition.charAt(0).toUpperCase() +
                                 itemData.condition.slice(1)}
@@ -362,25 +308,41 @@ const RoomInspection = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className={`${itemData.condition === "bom" ? "bg-green-100 text-green-800 border-green-600" : ""}`}
-                            onClick={() => handleConditionSelect(item, "bom")}
+                            className={`${
+                              itemData.condition === "bom"
+                                ? "bg-green-100 text-green-800 border-green-600"
+                                : ""
+                            }`}
+                            onClick={() =>
+                              handleConditionSelect(item.name, "bom")
+                            }
                           >
                             Bom
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            className={`${itemData.condition === "ruim" ? "bg-yellow-100 text-yellow-800 border-yellow-600" : ""}`}
-                            onClick={() => handleConditionSelect(item, "ruim")}
+                            className={`${
+                              itemData.condition === "ruim"
+                                ? "bg-yellow-100 text-yellow-800 border-yellow-600"
+                                : ""
+                            }`}
+                            onClick={() =>
+                              handleConditionSelect(item.name, "ruim")
+                            }
                           >
                             Ruim
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            className={`${itemData.condition === "pessimo" ? "bg-red-100 text-red-800 border-red-600" : ""}`}
+                            className={`${
+                              itemData.condition === "pessimo"
+                                ? "bg-red-100 text-red-800 border-red-600"
+                                : ""
+                            }`}
                             onClick={() =>
-                              handleConditionSelect(item, "pessimo")
+                              handleConditionSelect(item.name, "pessimo")
                             }
                           >
                             Péssimo
@@ -393,7 +355,7 @@ const RoomInspection = () => {
                           placeholder="Adicione observações sobre este item..."
                           value={itemData.description || ""}
                           onChange={(e) =>
-                            handleDescriptionChange(item, e.target.value)
+                            handleDescriptionChange(item.name, e.target.value)
                           }
                         />
 
@@ -403,7 +365,7 @@ const RoomInspection = () => {
                             accept="image/*"
                             className="hidden"
                             ref={fileInputRef}
-                            onChange={(e) => handleImageUpload(item, e)}
+                            onChange={(e) => handleImageUpload(item.name, e)}
                           />
                           <input
                             type="file"
@@ -411,7 +373,7 @@ const RoomInspection = () => {
                             capture="environment"
                             className="hidden"
                             ref={cameraInputRef}
-                            onChange={(e) => handleImageUpload(item, e)}
+                            onChange={(e) => handleImageUpload(item.name, e)}
                           />
 
                           <Button
@@ -439,7 +401,7 @@ const RoomInspection = () => {
                               <img
                                 key={index}
                                 src={image}
-                                alt={`${item} ${index + 1}`}
+                                alt={`${item.name} ${index + 1}`}
                                 className="w-full h-24 object-cover rounded-lg"
                               />
                             ))}

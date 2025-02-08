@@ -11,13 +11,15 @@ TempoDevtools.init();
 
 const basename = import.meta.env.BASE_URL;
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+const root = ReactDOM.createRoot(document.getElementById("root")!);
+
+root.render(
   <React.StrictMode>
-    <BrowserRouter basename={basename}>
-      <AuthProvider>
+    <AuthProvider>
+      <BrowserRouter basename={basename}>
         <App />
         <Toaster />
-      </AuthProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </AuthProvider>
   </React.StrictMode>,
 );
