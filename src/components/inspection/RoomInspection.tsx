@@ -46,10 +46,27 @@ const RoomInspection = () => {
       const { data, error } = await supabase
         .from("inspection_item_categories")
         .select("*")
-        .eq("room_type", roomId);
+        .eq("room_type", roomId)
+        .order("category", { ascending: true })
+        .order("name", { ascending: true });
 
       if (error) {
         console.error("Error fetching categories:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar categorias",
+          description: "Não foi possível carregar os itens para vistoria.",
+        });
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Sem itens para vistoria",
+          description:
+            "Não foram encontrados itens para este tipo de ambiente.",
+        });
         return;
       }
 
@@ -57,7 +74,7 @@ const RoomInspection = () => {
     };
 
     fetchCategories();
-  }, [roomId]);
+  }, [roomId, toast]);
 
   useEffect(() => {
     const fetchCurrentInspection = async () => {
