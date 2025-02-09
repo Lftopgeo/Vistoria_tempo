@@ -46,6 +46,7 @@ const InspectionSummary = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [roomSummaries, setRoomSummaries] = useState<RoomSummary[]>([]);
   const [propertyAddress, setPropertyAddress] = useState("");
   const [propertyDetails, setPropertyDetails] = useState<Property | null>(null);
@@ -63,52 +64,31 @@ const InspectionSummary = () => {
           .from("inspections")
           .select(
             `
-            id,
-            inspection_date,
-            observations,
-            property_id,
-            properties:property_id(
-              title,
-              type,
-              subtype,
-              area,
-              street,
-              number,
-              neighborhood,
-              city,
-              state,
-              zip_code
-            )
+            *,
+            properties:property_id(*)
           `,
           )
           .eq("inspector_id", user.id)
           .eq("status", "in_progress")
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .limit(1);
 
         if (inspectionError) throw inspectionError;
 
         if (!inspections || inspections.length === 0) {
-          toast({
-            variant: "destructive",
-            title: "Nenhuma vistoria em andamento",
-            description: "Não foram encontradas vistorias em andamento.",
-          });
+          setError("Nenhuma vistoria em andamento encontrada");
           setLoading(false);
           return;
         }
 
-        console.log("Found inspections:", inspections);
+        console.log("Found inspection:", inspections[0]);
 
         const inspection = inspections[0];
         setInspectionDetails(inspection);
 
         const property = inspection.properties;
         if (!property) {
-          toast({
-            variant: "destructive",
-            title: "Dados do imóvel não encontrados",
-            description: "Não foi possível carregar os dados do imóvel.",
-          });
+          setError("Dados do imóvel não encontrados");
           setLoading(false);
           return;
         }
@@ -127,11 +107,8 @@ const InspectionSummary = () => {
           .from("rooms")
           .select(
             `
-            id,
-            name,
-            image_url,
-            room_items!inner (id, name, condition, description),
-            room_items!inner (item_images(image_url))
+            *,
+            room_items (*, item_images(*))
           `,
           )
           .eq("inspection_id", inspection.id);
@@ -141,18 +118,16 @@ const InspectionSummary = () => {
         if (roomsError) throw roomsError;
 
         if (!rooms || rooms.length === 0) {
-          toast({
-            title: "Nenhum ambiente encontrado",
-            description:
-              "Esta vistoria ainda não possui ambientes cadastrados.",
-          });
+          setError("Nenhum ambiente encontrado nesta vistoria");
           setLoading(false);
           return;
         }
 
         // Process room data
-        const summaries = rooms.map((room) => {
+        const summaries = rooms.map((room: any) => {
           const roomItems = room.room_items || [];
+          console.log("Processing room:", room.name, "with items:", roomItems);
+
           const conditions = roomItems.reduce(
             (
               acc: { bom: number; ruim: number; pessimo: number },
@@ -169,11 +144,10 @@ const InspectionSummary = () => {
           // Get all images for this room's items
           const itemImages = roomItems.reduce((acc: string[], item: any) => {
             if (item.item_images) {
-              acc.push(
-                ...item.item_images
-                  .map((img: any) => img.image_url)
-                  .filter(Boolean),
-              );
+              const images = item.item_images
+                .map((img: any) => img.image_url)
+                .filter((url: string | null): url is string => !!url);
+              acc.push(...images);
             }
             return acc;
           }, []);
@@ -184,26 +158,26 @@ const InspectionSummary = () => {
             conditions,
             image:
               room.image_url || (itemImages.length > 0 ? itemImages[0] : null),
-            items: roomItems,
-            images: itemImages,
+            items: roomItems.map((item: any) => ({
+              ...item,
+              description:
+                item.description ||
+                getDefaultDescription(item.name, item.condition),
+            })),
           };
         });
 
         setRoomSummaries(summaries);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching inspection data:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar dados",
-          description: "Ocorreu um erro ao carregar os dados da vistoria.",
-        });
+        setError(error.message || "Erro ao carregar dados da vistoria");
       } finally {
         setLoading(false);
       }
     };
 
     fetchInspectionData();
-  }, [user, toast]);
+  }, [user]);
 
   const generatePDF = async () => {
     const doc = new jsPDF();
@@ -395,7 +369,40 @@ const InspectionSummary = () => {
   };
 
   if (loading) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando dados da vistoria...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={() => navigate(-1)}>Voltar</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!inspectionDetails || !propertyDetails) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">
+            Nenhuma vistoria em andamento encontrada
+          </p>
+          <Button onClick={() => navigate("/dashboard")}>
+            Ir para Dashboard
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const totalItems = roomSummaries.reduce(
