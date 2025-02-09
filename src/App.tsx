@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Menu } from "./components/navigation/Menu";
 import { ErrorBoundary } from "./components/ui/error-boundary";
 import { useAuth } from "./contexts/AuthContext";
 import Home from "./components/home";
@@ -35,6 +36,7 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary className="static">
+      <Menu />
       <Routes>
         <Route path="/" element={<Home onGetStarted={handleGetStarted} />} />
         <Route path="/login" element={<LoginPage />} />

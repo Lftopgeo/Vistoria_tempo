@@ -17,7 +17,6 @@ const WelcomeHeader = ({ logoText = "GeoApp" }: WelcomeHeaderProps) => {
       </div>
       {/* Logo Container */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center text-white">
-        <div className="w-24 h-24 mb-4 rounded-xl p-2 bg-[#272525] rounded-l-3xl"></div>
         <h1 className="text-4xl font-bold mb-2">
           <span>{logoText.slice(0, 3)}</span>
           <span className="text-[#FFA726]">{logoText.slice(3)}</span>

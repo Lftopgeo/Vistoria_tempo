@@ -6,15 +6,32 @@ import DashboardHeader from "./DashboardHeader";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { createTestInspection } from "@/lib/testData";
-import { ClipboardList, Clock, Plus, Pencil, Trash2 } from "lucide-react";
-import ProjectCard from "./ProjectCard";
-import BottomNav from "./BottomNav";
+import {
+  ClipboardList,
+  Clock,
+  Plus,
+  Pencil,
+  Trash2,
+  AlertCircle,
+} from "lucide-react";
 import { Calendar } from "./../ui/calendar";
 import { Database } from "@/types/supabase";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
-type Inspection = Database["public"]["Tables"]["inspections"]["Row"];
+type Inspection = Database["public"]["Tables"]["inspections"]["Row"] & {
+  properties: Property;
+};
 
 interface DashboardProps {
   onLogout?: () => void;
@@ -24,59 +41,109 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [inspectionToDelete, setInspectionToDelete] = useState<string | null>(
+    null,
+  );
 
-  const fetchData = async () => {
+  const fetchInspections = async () => {
     if (!user) return;
 
     try {
-      const [propertiesResponse, inspectionsResponse] = await Promise.all([
-        supabase
-          .from("properties")
-          .select("*")
-          .eq("created_by", user?.id)
-          .order("created_at", { ascending: false })
-          .limit(3),
-        supabase
-          .from("inspections")
-          .select("*")
-          .eq("inspector_id", user?.id)
-          .order("created_at", { ascending: false }),
-      ]);
+      const { data, error } = await supabase
+        .from("inspections")
+        .select(
+          `
+          *,
+          properties:property_id(*)
+        `,
+        )
+        .eq("inspector_id", user.id)
+        .order("created_at", { ascending: false });
 
-      if (propertiesResponse.error) throw propertiesResponse.error;
-      if (inspectionsResponse.error) throw inspectionsResponse.error;
+      if (error) throw error;
 
-      setProperties(propertiesResponse.data);
-      setInspections(inspectionsResponse.data);
+      setInspections(data || []);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("Error fetching inspections:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar vistorias",
+        description: "Não foi possível carregar suas vistorias.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
+    fetchInspections();
   }, [user]);
 
-  const handleEdit = (inspectionId: string) => {
-    navigate(`/inspection/${inspectionId}`);
+  const handleEdit = (inspection: Inspection) => {
+    if (inspection.status === "completed") {
+      navigate(`/inspection-report/${inspection.id}`);
+    } else {
+      navigate(`/property-environments`);
+    }
   };
 
   const handleDelete = async (inspectionId: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta vistoria?")) return;
+    setInspectionToDelete(inspectionId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!inspectionToDelete) return;
 
     try {
+      // Delete related records first
+      const inspection = inspections.find((i) => i.id === inspectionToDelete);
+      if (!inspection) return;
+
+      // Get all rooms for this inspection
+      const { data: rooms } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("inspection_id", inspectionToDelete);
+
+      if (rooms) {
+        // Delete room items and their images
+        for (const room of rooms) {
+          const { data: roomItems } = await supabase
+            .from("room_items")
+            .select("id")
+            .eq("room_id", room.id);
+
+          if (roomItems) {
+            // Delete item images
+            for (const item of roomItems) {
+              await supabase
+                .from("item_images")
+                .delete()
+                .eq("item_id", item.id);
+            }
+
+            // Delete room items
+            await supabase.from("room_items").delete().eq("room_id", room.id);
+          }
+        }
+
+        // Delete rooms
+        await supabase
+          .from("rooms")
+          .delete()
+          .eq("inspection_id", inspectionToDelete);
+      }
+
+      // Finally delete the inspection
       const { error } = await supabase
         .from("inspections")
         .delete()
-        .eq("id", inspectionId);
+        .eq("id", inspectionToDelete);
 
       if (error) throw error;
 
@@ -85,7 +152,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
         description: "A vistoria foi excluída com sucesso.",
       });
 
-      fetchData(); // Recarrega os dados
+      setInspections(inspections.filter((i) => i.id !== inspectionToDelete));
     } catch (error) {
       console.error("Error deleting inspection:", error);
       toast({
@@ -93,6 +160,9 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
         title: "Erro ao excluir",
         description: "Ocorreu um erro ao excluir a vistoria.",
       });
+    } finally {
+      setDeleteDialogOpen(false);
+      setInspectionToDelete(null);
     }
   };
 
@@ -104,7 +174,14 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
   ).length;
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando vistorias...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -131,24 +208,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
               </h3>
               <p className="text-gray-600">Vistorias Ativas</p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 text-blue-600 hover:text-blue-700"
-                onClick={() => handleEdit("active")}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 text-red-600 hover:text-red-700"
-                onClick={() => handleDelete("active")}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
           </Card>
 
           <Card className="p-6 flex items-center gap-4">
@@ -160,24 +219,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                 {pendingInspections}
               </h3>
               <p className="text-gray-600">Pendentes</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 text-blue-600 hover:text-blue-700"
-                onClick={() => handleEdit("pending")}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 text-red-600 hover:text-red-700"
-                onClick={() => handleDelete("pending")}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
             </div>
           </Card>
         </div>
@@ -196,52 +237,67 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Próximas Vistorias</h2>
+            <h2 className="text-xl font-semibold mb-4">Vistorias Recentes</h2>
             <div className="space-y-4">
-              {inspections.slice(0, 3).map((inspection) => (
-                <div
-                  key={inspection.id}
-                  className="flex items-center justify-between border-b pb-4 last:border-0"
-                >
-                  <div>
-                    <p className="font-medium">
-                      Vistoria #{inspection.id.slice(0, 8)}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(
-                        inspection.inspection_date || "",
-                      ).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${inspection.status === "in_progress" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
-                    >
-                      {inspection.status === "in_progress"
-                        ? "Em Andamento"
-                        : "Pendente"}
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 text-blue-600 hover:text-blue-700"
-                        onClick={() => handleEdit(inspection.id)}
+              {inspections.length === 0 ? (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">Nenhuma vistoria encontrada</p>
+                </div>
+              ) : (
+                inspections.slice(0, 5).map((inspection) => (
+                  <div
+                    key={inspection.id}
+                    className="flex items-center justify-between border-b pb-4 last:border-0"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {inspection.properties?.title || "Sem título"}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(
+                          inspection.inspection_date,
+                        ).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          inspection.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : inspection.status === "in_progress"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-yellow-100 text-yellow-800"
+                        }`}
                       >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 text-red-600 hover:text-red-700"
-                        onClick={() => handleDelete(inspection.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        {inspection.status === "completed"
+                          ? "Concluída"
+                          : inspection.status === "in_progress"
+                            ? "Em Andamento"
+                            : "Pendente"}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                          onClick={() => handleEdit(inspection)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 text-red-600 hover:text-red-700"
+                          onClick={() => handleDelete(inspection.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>
@@ -283,7 +339,27 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           </div>
         </div>
       </div>
-      <BottomNav />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Vistoria</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta vistoria? Esta ação não pode
+              ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

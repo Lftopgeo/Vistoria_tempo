@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
@@ -14,13 +14,13 @@ const propertyTypes = [
   {
     type: "Casa",
     image:
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2075&q=80",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2053&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     subtypes: ["Casa Térrea", "Sobrado", "Chalé", "Casa em Condomínio"],
   },
   {
     type: "Apartamento",
     image:
-      "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+      "https://womaqnguctkhxqdiacwp.supabase.co/storage/v1/object/public/imagens//Apartamento.jpg",
     subtypes: ["Studio", "Kitnet", "Cobertura", "Duplex", "Triplex"],
   },
   {
@@ -41,61 +41,47 @@ const PropertyRegistration = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = React.useState(false);
-  const [selectedType, setSelectedType] = React.useState("");
-  const [selectedSubtype, setSelectedSubtype] = React.useState("");
-  const [formData, setFormData] = React.useState({
-    inspectionId: "",
-    inspectedName: "",
-    ownerName: "",
+  const [loading, setLoading] = useState(false);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedSubtype, setSelectedSubtype] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
     title: "",
-    description: "",
+    registrationNumber: "",
     area: "",
     value: "",
-    registrationNumber: "",
-    address: {
-      street: "",
-      number: "",
-      complement: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      zipCode: "",
-    },
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    zipCode: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-
-    if (!selectedType || !selectedSubtype) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Selecione o tipo e subtipo do imóvel",
-      });
-      return;
-    }
+    if (!user || !selectedType || !selectedSubtype) return;
 
     setLoading(true);
     try {
+      // Create property
       const { data: property, error: propertyError } = await supabase
         .from("properties")
         .insert([
           {
-            title: formData.title || selectedType,
+            title: formData.title,
             type: selectedType,
             subtype: selectedSubtype,
-            area: Number(formData.area) || 0,
-            value: Number(formData.value) || 0,
             registration_number: formData.registrationNumber,
-            street: formData.address.street,
-            number: formData.address.number,
-            complement: formData.address.complement,
-            neighborhood: formData.address.neighborhood,
-            city: formData.address.city,
-            state: formData.address.state,
-            zip_code: formData.address.zipCode,
+            area: parseFloat(formData.area) || 0,
+            value: parseFloat(formData.value) || 0,
+            street: formData.street,
+            number: formData.number,
+            complement: formData.complement,
+            neighborhood: formData.neighborhood,
+            city: formData.city,
+            state: formData.state,
+            zip_code: formData.zipCode,
             created_by: user.id,
           },
         ])
@@ -104,6 +90,7 @@ const PropertyRegistration = () => {
 
       if (propertyError) throw propertyError;
 
+      // Create inspection
       const { error: inspectionError } = await supabase
         .from("inspections")
         .insert([
@@ -112,36 +99,38 @@ const PropertyRegistration = () => {
             inspector_id: user.id,
             inspection_date: new Date().toISOString(),
             status: "in_progress",
-            observations: formData.description,
+            observations: "",
           },
         ]);
 
       if (inspectionError) throw inspectionError;
 
       toast({
-        title: "Sucesso",
-        description: "Imóvel cadastrado com sucesso!",
+        title: "Imóvel registrado",
+        description: "O imóvel foi registrado com sucesso.",
       });
 
       navigate("/property-environments");
-    } catch (error: any) {
-      console.error("Error saving property:", error);
+    } catch (error) {
+      console.error("Error creating property:", error);
       toast({
         variant: "destructive",
-        title: "Erro ao salvar",
-        description: error.message || "Erro ao cadastrar imóvel",
+        title: "Erro ao registrar imóvel",
+        description: "Ocorreu um erro ao registrar o imóvel. Tente novamente.",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const currentSubtypes =
-    propertyTypes.find((p) => p.type === selectedType)?.subtypes || [];
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 pb-16">
+      <div className="container mx-auto px-4 py-8">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center text-gray-600 mb-6"
@@ -150,303 +139,234 @@ const PropertyRegistration = () => {
           Voltar
         </button>
 
-        <Card className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-semibold mb-6 flex items-center">
-                <Building className="mr-2 h-6 w-6" />
-                Cadastro de Imóvel
-              </h2>
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-8">
+            Registrar Novo Imóvel
+          </h1>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                {propertyTypes.map((type) => (
-                  <div
-                    key={type.type}
-                    className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedType === type.type ? "border-red-600 shadow-lg" : "border-transparent hover:border-gray-300"}`}
-                    onClick={() => {
-                      setSelectedType(type.type);
-                      setSelectedSubtype("");
-                    }}
-                  >
-                    <div className="relative aspect-video">
-                      <img
-                        src={type.image}
-                        alt={type.type}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                        <span className="text-white font-semibold text-lg">
-                          {type.type}
-                        </span>
-                      </div>
+          <div className="mb-8">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">
+              Tipo do Imóvel
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {propertyTypes.map((propertyType) => (
+                <Card
+                  key={propertyType.type}
+                  className={`cursor-pointer transition-all ${selectedType === propertyType.type ? "ring-2 ring-red-500" : "hover:border-red-500"}`}
+                  onClick={() => setSelectedType(propertyType.type)}
+                >
+                  <div className="relative h-32">
+                    <img
+                      src={propertyType.image}
+                      alt={propertyType.type}
+                      className="absolute inset-0 w-full h-full object-cover rounded-t-lg"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-40 rounded-t-lg" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                      <span className="text-white text-lg font-medium">
+                        {propertyType.type}
+                      </span>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="absolute bottom-2 left-2 bg-red-500/80 hover:bg-red-600/90 text-white font-medium"
+                      >
+                        Clique aqui
+                      </Button>
                     </div>
                   </div>
-                ))}
-              </div>
+                </Card>
+              ))}
+            </div>
+          </div>
 
-              {selectedType && (
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold mb-4">
-                    Selecione o Subtipo
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {currentSubtypes.map((subtype) => (
-                      <div
-                        key={subtype}
-                        className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${selectedSubtype === subtype ? "border-red-600 bg-red-50" : "border-gray-200 hover:border-gray-300"}`}
-                        onClick={() => setSelectedSubtype(subtype)}
+          {selectedType && (
+            <div className="mb-8">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Subtipo do Imóvel
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {propertyTypes
+                  .find((p) => p.type === selectedType)
+                  ?.subtypes.map((subtype) => (
+                    <Card
+                      key={subtype}
+                      className={`cursor-pointer p-4 transition-all ${selectedSubtype === subtype ? "ring-2 ring-red-500" : "hover:border-red-500"}`}
+                      onClick={() => setSelectedSubtype(subtype)}
+                    >
+                      <span
+                        className={`text-sm font-medium ${selectedSubtype === subtype ? "text-red-600" : "text-gray-900"}`}
                       >
-                        <span className="text-sm font-medium">{subtype}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold flex items-center text-[#0d1fa8]">
-                <Home className="mr-2 h-5 w-5" />
-                Informações Básicas
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="inspectionId">ID da Vistoria</Label>
-                  <Input
-                    id="inspectionId"
-                    placeholder="Digite o ID da vistoria"
-                    value={formData.inspectionId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, inspectionId: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="inspectedName">Nome do Vistoriado</Label>
-                  <Input
-                    id="inspectedName"
-                    placeholder="Digite o nome do vistoriado"
-                    value={formData.inspectedName}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        inspectedName: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ownerName">Proprietário do Imóvel</Label>
-                  <Input
-                    id="ownerName"
-                    placeholder="Digite o nome do proprietário"
-                    value={formData.ownerName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, ownerName: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="registrationNumber">
-                    Número de Matrícula
-                  </Label>
-                  <Input
-                    id="registrationNumber"
-                    placeholder="Digite o número de matrícula"
-                    value={formData.registrationNumber}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        registrationNumber: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="area">Área (m²)</Label>
-                  <Input
-                    id="area"
-                    type="number"
-                    placeholder="Ex: 100"
-                    value={formData.area}
-                    onChange={(e) =>
-                      setFormData({ ...formData, area: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="value">Valor (R$)</Label>
-                  <Input
-                    id="value"
-                    type="number"
-                    placeholder="Ex: 500000"
-                    value={formData.value}
-                    onChange={(e) =>
-                      setFormData({ ...formData, value: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Descreva as características do imóvel..."
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  rows={4}
-                />
+                        {subtype}
+                      </span>
+                    </Card>
+                  ))}
               </div>
             </div>
+          )}
 
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold flex items-center">
-                <MapPin className="mr-2 h-5 w-5" />
-                Endereço
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Rua</Label>
-                  <Input
-                    placeholder="Nome da rua"
-                    value={formData.address.street}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          street: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Número</Label>
+          {selectedType && selectedSubtype && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <Card className="p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <Home className="h-5 w-5" />
+                  Informações Básicas
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="title">Título do Imóvel</Label>
                     <Input
-                      placeholder="Nº"
-                      value={formData.address.number}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          address: {
-                            ...formData.address,
-                            number: e.target.value,
-                          },
-                        })
-                      }
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Casa em Condomínio Fechado"
+                      required
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>Complemento</Label>
+                  <div>
+                    <Label htmlFor="registrationNumber">
+                      Número de Registro
+                    </Label>
                     <Input
-                      placeholder="Apto, Sala..."
-                      value={formData.address.complement}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          address: {
-                            ...formData.address,
-                            complement: e.target.value,
-                          },
-                        })
-                      }
+                      id="registrationNumber"
+                      name="registrationNumber"
+                      value={formData.registrationNumber}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 123456"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="area">Área (m²)</Label>
+                    <Input
+                      id="area"
+                      name="area"
+                      type="number"
+                      value={formData.area}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 100"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="value">Valor (R$)</Label>
+                    <Input
+                      id="value"
+                      name="value"
+                      type="number"
+                      value={formData.value}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 500000"
                     />
                   </div>
                 </div>
+              </Card>
 
-                <div className="space-y-2">
-                  <Label>Bairro</Label>
-                  <Input
-                    placeholder="Nome do bairro"
-                    value={formData.address.neighborhood}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          neighborhood: e.target.value,
-                        },
-                      })
-                    }
-                  />
+              <Card className="p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Endereço
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <Label htmlFor="street">Logradouro</Label>
+                    <Input
+                      id="street"
+                      name="street"
+                      value={formData.street}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Rua das Flores"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="number">Número</Label>
+                    <Input
+                      id="number"
+                      name="number"
+                      value={formData.number}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 123"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="complement">Complemento</Label>
+                    <Input
+                      id="complement"
+                      name="complement"
+                      value={formData.complement}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Apto 101"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="neighborhood">Bairro</Label>
+                    <Input
+                      id="neighborhood"
+                      name="neighborhood"
+                      value={formData.neighborhood}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Centro"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="city">Cidade</Label>
+                    <Input
+                      id="city"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      placeholder="Ex: São Paulo"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="state">Estado</Label>
+                    <Input
+                      id="state"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      placeholder="Ex: SP"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="zipCode">CEP</Label>
+                    <Input
+                      id="zipCode"
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 12345-678"
+                      required
+                    />
+                  </div>
                 </div>
+              </Card>
 
-                <div className="space-y-2">
-                  <Label>Cidade</Label>
-                  <Input
-                    placeholder="Nome da cidade"
-                    value={formData.address.city}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: { ...formData.address, city: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Estado</Label>
-                  <Input
-                    placeholder="UF"
-                    maxLength={2}
-                    value={formData.address.state}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          state: e.target.value.toUpperCase(),
-                        },
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>CEP</Label>
-                  <Input
-                    placeholder="00000-000"
-                    value={formData.address.zipCode}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          zipCode: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
+              <div className="flex justify-end gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(-1)}
+                  disabled={loading}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  disabled={loading}
+                >
+                  {loading ? "Salvando..." : "Continuar"}
+                </Button>
               </div>
-            </div>
-
-            <div className="pt-6">
-              <Button
-                type="submit"
-                className="w-full bg-red-600 hover:bg-red-700 text-white"
-                disabled={loading}
-              >
-                {loading ? "Salvando..." : "Cadastrar Imóvel"}
-              </Button>
-            </div>
-          </form>
-        </Card>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

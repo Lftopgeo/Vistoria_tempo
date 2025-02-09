@@ -113,194 +113,152 @@ const InspectionReport = () => {
   }, [user, inspectionId]);
 
   const generatePDF = async () => {
-    const doc = new jsPDF();
+    // Configure PDF settings
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
     const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
     let yPos = 20;
 
-    // Header with Logo
+    // Header
     doc.setFillColor(26, 26, 26);
-    doc.rect(0, 0, pageWidth, 40, "F");
+    doc.rect(0, 0, pageWidth, 35, "F");
 
+    // Logo text
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(24);
-    doc.text("GEO", 20, 25);
-    doc.setTextColor(255, 167, 38); // #FFA726
-    doc.text("APP", 55, 25);
+    doc.text("GEO", 20, 23);
+    doc.setTextColor(255, 167, 38);
+    doc.text("APP", 55, 23);
 
+    // Report title
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
-    doc.text("Relatório de Vistoria", pageWidth - 20, 25, { align: "right" });
+    doc.setFontSize(16);
+    doc.text("Relatório de Vistoria", pageWidth - 20, 23, { align: "right" });
 
     // Reset text color
     doc.setTextColor(0, 0, 0);
     yPos = 50;
 
-    // Property Details Box
+    // Property Details
     doc.setDrawColor(200, 200, 200);
     doc.setFillColor(250, 250, 250);
-    doc.roundedRect(15, yPos, pageWidth - 30, 60, 3, 3, "FD");
+    doc.roundedRect(15, yPos, pageWidth - 30, 80, 3, 3, "FD");
 
     yPos += 10;
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont(undefined, "bold");
     doc.text("Detalhes do Imóvel", 20, yPos);
     doc.setFont(undefined, "normal");
+    doc.setFontSize(10);
 
+    yPos += 15;
+    doc.text(`Endereço: ${property?.street}, ${property?.number}`, 20, yPos);
     yPos += 10;
     doc.text(
-      `Endereço: ${property?.street}, ${property?.number} - ${property?.neighborhood}, ${property?.city} - ${property?.state}`,
+      `Bairro: ${property?.neighborhood} - ${property?.city}/${property?.state}`,
       20,
       yPos,
     );
+    yPos += 10;
+    doc.text(`CEP: ${property?.zip_code || "N/A"}`, 20, yPos);
     yPos += 10;
     doc.text(`Tipo: ${property?.type} - ${property?.subtype || ""}`, 20, yPos);
     yPos += 10;
-    doc.text(`Área: ${property?.area}m²`, 20, yPos);
-
-    yPos += 20;
-
-    // Inspection Info Box
-    doc.setDrawColor(200, 200, 200);
-    doc.setFillColor(250, 250, 250);
-    doc.roundedRect(15, yPos, pageWidth - 30, 40, 3, 3, "FD");
-
-    yPos += 10;
-    doc.setFont(undefined, "bold");
-    doc.text("Informações da Vistoria", 20, yPos);
-    doc.setFont(undefined, "normal");
-
-    yPos += 10;
     doc.text(
-      `Data: ${new Date(inspection?.inspection_date || "").toLocaleDateString(
-        "pt-BR",
-      )}`,
+      `Área: ${property?.area}m² - Valor: R$ ${property?.value?.toLocaleString("pt-BR") || "N/A"}`,
       20,
       yPos,
     );
-    yPos += 10;
-    doc.text(`Vistoriador: ${user?.email}`, 20, yPos);
 
     yPos += 20;
 
-    // Summary Table
-    doc.setFont(undefined, "bold");
-    doc.text("Resumo por Ambiente", 20, yPos);
-    doc.setFont(undefined, "normal");
-    yPos += 10;
-
-    const summaryData = rooms.map((room) => [
-      room.name,
-      room.totalItems,
-      room.conditions.bom,
-      room.conditions.ruim,
-      room.conditions.pessimo,
-    ]);
-
-    doc.autoTable({
-      startY: yPos,
-      head: [
-        [
-          "Ambiente",
-          "Total de Itens",
-          "Bom Estado",
-          "Estado Ruim",
-          "Estado Péssimo",
-        ],
-      ],
-      body: summaryData,
-      styles: {
-        fontSize: 10,
-        cellPadding: 5,
-      },
-      headStyles: {
-        fillColor: [26, 26, 26],
-        textColor: [255, 255, 255],
-        fontSize: 10,
-        fontStyle: "bold",
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 15;
-
-    // Detailed Report for each room
+    // Room Details
     for (const room of rooms) {
-      // Add page break if needed
-      if (yPos > doc.internal.pageSize.height - 40) {
+      if (yPos > pageHeight - 60) {
         doc.addPage();
         yPos = 20;
       }
 
       doc.setFontSize(14);
+      doc.setFont(undefined, "bold");
       doc.text(room.name, 20, yPos);
-      yPos += 10;
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(10);
 
-      // Items table
+      yPos += 15;
+
+      // Table of items
       const itemsData = room.items?.map((item) => [
         item.name,
         item.condition.toUpperCase(),
         item.description || "-",
       ]);
 
-      doc.autoTable({
-        startY: yPos,
-        head: [["Item", "Condição", "Observações"]],
-        body: itemsData || [],
-        styles: {
-          fontSize: 9,
-          cellPadding: 4,
-        },
-        headStyles: {
-          fillColor: [200, 200, 200],
-          textColor: [0, 0, 0],
-          fontSize: 9,
-          fontStyle: "bold",
-        },
-        columnStyles: {
-          0: { cellWidth: 60 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 90 },
-        },
-        alternateRowStyles: {
-          fillColor: [245, 245, 245],
-        },
-        didDrawCell: function (data) {
-          if (data.section === "body" && data.column.index === 1) {
-            const condition = data.cell.raw.toString().toLowerCase();
-            if (condition === "bom") {
-              doc.setFillColor(200, 250, 200);
-            } else if (condition === "ruim") {
-              doc.setFillColor(255, 240, 200);
-            } else if (condition === "pessimo") {
-              doc.setFillColor(255, 200, 200);
+      if (itemsData && itemsData.length > 0) {
+        doc.autoTable({
+          startY: yPos,
+          head: [["Item", "Condição", "Observações"]],
+          body: itemsData,
+          styles: {
+            fontSize: 8,
+            cellPadding: 2,
+          },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: "auto" },
+          },
+          didDrawCell: function (data) {
+            if (data.section === "body" && data.column.index === 1) {
+              const condition = data.cell.raw.toString().toLowerCase();
+              if (condition === "bom") {
+                doc.setFillColor(200, 250, 200);
+              } else if (condition === "ruim") {
+                doc.setFillColor(255, 240, 200);
+              } else if (condition === "pessimo") {
+                doc.setFillColor(255, 200, 200);
+              }
+              doc.rect(
+                data.cell.x,
+                data.cell.y,
+                data.cell.width,
+                data.cell.height,
+                "F",
+              );
+              doc.text(
+                data.cell.raw.toString(),
+                data.cell.x + data.cell.width / 2,
+                data.cell.y + data.cell.height / 2,
+                { align: "center", baseline: "middle" },
+              );
             }
-            doc.rect(
-              data.cell.x,
-              data.cell.y,
-              data.cell.width,
-              data.cell.height,
-              "F",
-            );
-            doc.text(
-              data.cell.raw.toString(),
-              data.cell.x + data.cell.width / 2,
-              data.cell.y + data.cell.height / 2,
-              {
-                align: "center",
-                baseline: "middle",
-              },
-            );
-          }
-        },
-      });
+          },
+        });
 
-      yPos = (doc as any).lastAutoTable.finalY + 15;
+        yPos = (doc as any).lastAutoTable.finalY + 20;
+      }
+    }
+
+    // Footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 10, {
+        align: "center",
+      });
     }
 
     // Save the PDF
-    doc.save(`vistoria_${new Date().toISOString().split("T")[0]}.pdf`);
+    const formattedDate = new Date().toISOString().split("T")[0];
+    const propertyId = property?.registration_number || "sem-registro";
+    doc.save(`vistoria_${propertyId}_${formattedDate}.pdf`);
   };
 
   if (loading) {
