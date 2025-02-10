@@ -38,6 +38,9 @@ const propertyTypes = [
 ];
 
 const PropertyRegistration = () => {
+  const typeRef = React.useRef<HTMLDivElement>(null);
+  const subtypeRef = React.useRef<HTMLDivElement>(null);
+  const formRef = React.useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -49,6 +52,9 @@ const PropertyRegistration = () => {
     registrationNumber: "",
     area: "",
     value: "",
+    inspectorName: "",
+    inspectorCreci: "",
+    ownerName: "",
     street: "",
     number: "",
     complement: "",
@@ -60,35 +66,52 @@ const PropertyRegistration = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedType || !selectedSubtype) return;
+    if (!user || !selectedType || !selectedSubtype || !formData.title) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha o tipo, subtipo e título do imóvel.",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
       // Create property
+      const propertyData = {
+        title: formData.title,
+        type: selectedType,
+        subtype: selectedSubtype,
+        registration_number: formData.registrationNumber || null,
+        area: formData.area ? parseFloat(formData.area) : null,
+        value: formData.value ? parseFloat(formData.value) : null,
+        inspector_name: formData.inspectorName || null,
+        inspector_creci: formData.inspectorCreci || null,
+        owner_name: formData.ownerName || null,
+        street: formData.street || null,
+        number: formData.number || null,
+        complement: formData.complement || null,
+        neighborhood: formData.neighborhood || null,
+        city: formData.city || null,
+        state: formData.state || null,
+        zip_code: formData.zipCode || null,
+        created_by: user.id,
+      };
+
       const { data: property, error: propertyError } = await supabase
         .from("properties")
-        .insert([
-          {
-            title: formData.title,
-            type: selectedType,
-            subtype: selectedSubtype,
-            registration_number: formData.registrationNumber,
-            area: parseFloat(formData.area) || 0,
-            value: parseFloat(formData.value) || 0,
-            street: formData.street,
-            number: formData.number,
-            complement: formData.complement,
-            neighborhood: formData.neighborhood,
-            city: formData.city,
-            state: formData.state,
-            zip_code: formData.zipCode,
-            created_by: user.id,
-          },
-        ])
+        .insert([propertyData])
         .select()
         .single();
 
-      if (propertyError) throw propertyError;
+      if (propertyError) {
+        console.error("Property Error:", propertyError);
+        throw new Error("Erro ao criar propriedade");
+      }
+
+      if (!property?.id) {
+        throw new Error("ID da propriedade não encontrado");
+      }
 
       // Create inspection
       const { error: inspectionError } = await supabase
@@ -103,7 +126,10 @@ const PropertyRegistration = () => {
           },
         ]);
 
-      if (inspectionError) throw inspectionError;
+      if (inspectionError) {
+        console.error("Inspection Error:", inspectionError);
+        throw new Error("Erro ao criar inspeção");
+      }
 
       toast({
         title: "Imóvel registrado",
@@ -111,16 +137,32 @@ const PropertyRegistration = () => {
       });
 
       navigate("/property-environments");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating property:", error);
       toast({
         variant: "destructive",
         title: "Erro ao registrar imóvel",
-        description: "Ocorreu um erro ao registrar o imóvel. Tente novamente.",
+        description:
+          error.message ||
+          "Ocorreu um erro ao registrar o imóvel. Tente novamente.",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const scrollToRef = (ref: React.RefObject<HTMLDivElement>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleTypeSelect = (type: string) => {
+    setSelectedType(type);
+    setTimeout(() => scrollToRef(subtypeRef), 100);
+  };
+
+  const handleSubtypeSelect = (subtype: string) => {
+    setSelectedSubtype(subtype);
+    setTimeout(() => scrollToRef(formRef), 100);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +186,7 @@ const PropertyRegistration = () => {
             Registrar Novo Imóvel
           </h1>
 
-          <div className="mb-8">
+          <div className="mb-8" ref={typeRef}>
             <h2 className="text-lg font-medium text-gray-900 mb-4">
               Tipo do Imóvel
             </h2>
@@ -153,7 +195,7 @@ const PropertyRegistration = () => {
                 <Card
                   key={propertyType.type}
                   className={`cursor-pointer transition-all ${selectedType === propertyType.type ? "ring-2 ring-red-500" : "hover:border-red-500"}`}
-                  onClick={() => setSelectedType(propertyType.type)}
+                  onClick={() => handleTypeSelect(propertyType.type)}
                 >
                   <div className="relative h-32">
                     <img
@@ -181,7 +223,7 @@ const PropertyRegistration = () => {
           </div>
 
           {selectedType && (
-            <div className="mb-8">
+            <div className="mb-8" ref={subtypeRef}>
               <h2 className="text-lg font-medium text-gray-900 mb-4">
                 Subtipo do Imóvel
               </h2>
@@ -192,7 +234,7 @@ const PropertyRegistration = () => {
                     <Card
                       key={subtype}
                       className={`cursor-pointer p-4 transition-all ${selectedSubtype === subtype ? "ring-2 ring-red-500" : "hover:border-red-500"}`}
-                      onClick={() => setSelectedSubtype(subtype)}
+                      onClick={() => handleSubtypeSelect(subtype)}
                     >
                       <span
                         className={`text-sm font-medium ${selectedSubtype === subtype ? "text-red-600" : "text-gray-900"}`}
@@ -206,7 +248,7 @@ const PropertyRegistration = () => {
           )}
 
           {selectedType && selectedSubtype && (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" ref={formRef}>
               <Card className="p-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
                   <Home className="h-5 w-5" />
@@ -214,7 +256,47 @@ const PropertyRegistration = () => {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="title">Título do Imóvel</Label>
+                    <Label htmlFor="inspectorName">Nome do Vistoriador</Label>
+                    <Input
+                      id="inspectorName"
+                      name="inspectorName"
+                      value={formData.inspectorName}
+                      onChange={handleInputChange}
+                      placeholder="Nome completo do vistoriador"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="inspectorCreci">CRECI</Label>
+                    <Input
+                      id="inspectorCreci"
+                      name="inspectorCreci"
+                      value={formData.inspectorCreci}
+                      onChange={handleInputChange}
+                      placeholder="Número do CRECI"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="ownerName">
+                      Nome do Proprietário/Inquilino
+                    </Label>
+                    <Input
+                      id="ownerName"
+                      name="ownerName"
+                      value={formData.ownerName}
+                      onChange={handleInputChange}
+                      placeholder="Nome completo do proprietário ou inquilino"
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="title"
+                      className="flex items-center justify-between"
+                    >
+                      <span>Título do Imóvel</span>
+                      <span className="text-sm text-muted-foreground">
+                        * Nome que será exibido na vistoria
+                      </span>
+                    </Label>
                     <Input
                       id="title"
                       name="title"
@@ -245,7 +327,6 @@ const PropertyRegistration = () => {
                       value={formData.area}
                       onChange={handleInputChange}
                       placeholder="Ex: 100"
-                      required
                     />
                   </div>
                   <div>
@@ -276,7 +357,6 @@ const PropertyRegistration = () => {
                       value={formData.street}
                       onChange={handleInputChange}
                       placeholder="Ex: Rua das Flores"
-                      required
                     />
                   </div>
                   <div>
@@ -287,7 +367,6 @@ const PropertyRegistration = () => {
                       value={formData.number}
                       onChange={handleInputChange}
                       placeholder="Ex: 123"
-                      required
                     />
                   </div>
                   <div>
@@ -308,7 +387,6 @@ const PropertyRegistration = () => {
                       value={formData.neighborhood}
                       onChange={handleInputChange}
                       placeholder="Ex: Centro"
-                      required
                     />
                   </div>
                   <div>
@@ -319,7 +397,6 @@ const PropertyRegistration = () => {
                       value={formData.city}
                       onChange={handleInputChange}
                       placeholder="Ex: São Paulo"
-                      required
                     />
                   </div>
                   <div>
@@ -330,7 +407,6 @@ const PropertyRegistration = () => {
                       value={formData.state}
                       onChange={handleInputChange}
                       placeholder="Ex: SP"
-                      required
                     />
                   </div>
                   <div>
@@ -341,7 +417,6 @@ const PropertyRegistration = () => {
                       value={formData.zipCode}
                       onChange={handleInputChange}
                       placeholder="Ex: 12345-678"
-                      required
                     />
                   </div>
                 </div>
