@@ -114,8 +114,11 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          inspector_creci: string | null
+          inspector_name: string | null
           neighborhood: string | null
           number: string | null
+          owner_name: string | null
           registration_number: string | null
           state: string | null
           street: string | null
@@ -133,8 +136,11 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          inspector_creci?: string | null
+          inspector_name?: string | null
           neighborhood?: string | null
           number?: string | null
+          owner_name?: string | null
           registration_number?: string | null
           state?: string | null
           street?: string | null
@@ -152,8 +158,11 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          inspector_creci?: string | null
+          inspector_name?: string | null
           neighborhood?: string | null
           number?: string | null
+          owner_name?: string | null
           registration_number?: string | null
           state?: string | null
           street?: string | null

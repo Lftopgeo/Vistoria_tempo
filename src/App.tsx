@@ -10,6 +10,10 @@ import PropertyEnvironments from "./components/property/PropertyEnvironments";
 import RoomInspection from "./components/inspection/RoomInspection";
 import InspectionSummary from "./components/inspection/InspectionSummary";
 import InspectionReport from "./components/inspection/InspectionReport";
+import InspectionAreas from "./components/inspection/InspectionAreas";
+import ExternalAreaInspection from "./components/inspection/ExternalAreaInspection";
+import KeysInspection from "./components/inspection/KeysInspection";
+import MetersInspection from "./components/inspection/MetersInspection";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
@@ -55,6 +59,38 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <PropertyRegistration />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/inspection-areas"
+          element={
+            <PrivateRoute>
+              <InspectionAreas />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/external-area"
+          element={
+            <PrivateRoute>
+              <ExternalAreaInspection />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/keys-inspection"
+          element={
+            <PrivateRoute>
+              <KeysInspection />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/meters-inspection"
+          element={
+            <PrivateRoute>
+              <MetersInspection />
             </PrivateRoute>
           }
         />

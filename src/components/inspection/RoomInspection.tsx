@@ -280,7 +280,7 @@ const RoomInspection = () => {
         </button>
 
         <div className="space-y-6">
-          <Card className="p-6">
+          <Card className="p-6 border-[#de9619]">
             <div className="flex gap-4 items-start">
               <div>
                 <h2 className="text-2xl font-semibold capitalize">{roomId}</h2>
@@ -291,7 +291,7 @@ const RoomInspection = () => {
 
           {Object.entries(groupedCategories).map(([category, items]) => (
             <Card key={category} className="p-6">
-              <h3 className="text-lg font-semibold capitalize mb-4">
+              <h3 className="text-lg font-semibold capitalize mb-4 flex">
                 {category.replace("_", " ")}
               </h3>
               <div className="space-y-6">
@@ -433,7 +433,6 @@ const RoomInspection = () => {
           ))}
         </div>
       </div>
-
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
         <div className="container mx-auto">
           <Button

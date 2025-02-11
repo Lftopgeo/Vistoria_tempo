@@ -136,7 +136,7 @@ const PropertyRegistration = () => {
         description: "O imóvel foi registrado com sucesso.",
       });
 
-      navigate("/property-environments");
+      navigate("/inspection-areas");
     } catch (error: any) {
       console.error("Error creating property:", error);
       toast({

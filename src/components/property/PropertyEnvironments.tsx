@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "../ui/button";
-import { ArrowLeft } from "lucide-react";
+import { Card } from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { ArrowLeft, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -40,7 +43,23 @@ const defaultRooms = [
   },
 ];
 
+const roomImages = {
+  quarto:
+    "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?q=80&w=500",
+  sala: "https://images.unsplash.com/photo-1585128792020-803d29415281?q=80&w=500",
+  cozinha:
+    "https://images.unsplash.com/photo-1556911220-bff31c812dba?q=80&w=500",
+  banheiro:
+    "https://images.unsplash.com/photo-1620626011761-996317b8d101?q=80&w=500",
+  default:
+    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2053",
+};
+
 const PropertyEnvironments = () => {
+  const [customRooms, setCustomRooms] = useState<typeof defaultRooms>([]);
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [newRoomDescription, setNewRoomDescription] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -161,7 +180,84 @@ const PropertyEnvironments = () => {
             Ambientes da Casa
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
-            {defaultRooms.map((room, index) => {
+            {/* Add Room Card */}
+            <Card
+              className="flex flex-col items-center justify-center p-6 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setShowAddRoom(true)}
+            >
+              <Plus className="h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900">
+                Adicionar Cômodo
+              </h3>
+              <p className="text-gray-500 text-center">
+                Clique para adicionar um novo ambiente
+              </p>
+            </Card>
+
+            {/* Add Room Dialog */}
+            {showAddRoom && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <Card className="w-full max-w-md p-6">
+                  <h3 className="text-xl font-semibold mb-4">
+                    Adicionar Novo Cômodo
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Nome do Cômodo</Label>
+                      <Input
+                        value={newRoomName}
+                        onChange={(e) => setNewRoomName(e.target.value)}
+                        placeholder="Ex: Escritório"
+                      />
+                    </div>
+                    <div>
+                      <Label>Descrição</Label>
+                      <Input
+                        value={newRoomDescription}
+                        onChange={(e) => setNewRoomDescription(e.target.value)}
+                        placeholder="Breve descrição do ambiente"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowAddRoom(false);
+                          setNewRoomName("");
+                          setNewRoomDescription("");
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => {
+                          if (newRoomName.trim()) {
+                            setCustomRooms([
+                              ...customRooms,
+                              {
+                                name: newRoomName.toLowerCase(),
+                                description:
+                                  newRoomDescription ||
+                                  `Vistoria do ${newRoomName}`,
+                                image: roomImages.default,
+                                status: "Pendente",
+                              },
+                            ]);
+                            setShowAddRoom(false);
+                            setNewRoomName("");
+                            setNewRoomDescription("");
+                          }
+                        }}
+                      >
+                        Adicionar
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+            {[...defaultRooms, ...customRooms].map((room, index) => {
               const existingRoom = rooms.find(
                 (r) => r.name.toLowerCase() === room.name.toLowerCase(),
               );
