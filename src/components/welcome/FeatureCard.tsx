@@ -8,6 +8,7 @@ interface FeatureCardProps {
   icon?: LucideIcon;
   title?: string;
   description?: string;
+  className?: string;
 }
 
 const FeatureCard = ({

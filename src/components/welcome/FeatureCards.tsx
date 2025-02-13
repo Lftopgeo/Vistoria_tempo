@@ -4,12 +4,15 @@ import FeatureCard from "./FeatureCard";
 
 import { LucideIcon } from "lucide-react";
 
+interface Feature {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}
+
 interface FeatureCardsProps {
-  features?: Array<{
-    icon: LucideIcon;
-    title: string;
-    description: string;
-  }>;
+  features?: Feature[];
+  className?: string;
 }
 
 const FeatureCards = ({ features }: FeatureCardsProps) => {
