@@ -13,12 +13,9 @@ interface LoginFormProps {
 
 const LoginForm = ({ onSubmit }: LoginFormProps) => {
   const navigate = useNavigate();
-  const [email, setEmail] = React.useState("admin@geoapp.com");
-  const [password, setPassword] = React.useState("admin123");
-  const defaultCredentials = {
-    email: "admin@geoapp.com",
-    password: "admin123",
-  };
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+
   const [loading, setLoading] = React.useState(false);
   const { signIn } = useAuth();
   const { toast } = useToast();
@@ -37,12 +34,7 @@ const LoginForm = ({ onSubmit }: LoginFormProps) => {
       setLoading(true);
 
       try {
-        console.log(
-          "Attempting login with:",
-          email === defaultCredentials.email
-            ? "default credentials"
-            : "custom credentials",
-        );
+        console.log("Attempting login with:", email);
         await signIn(email, password);
 
         if (onSubmit) {

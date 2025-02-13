@@ -16,7 +16,7 @@ const FeatureCard = ({
   return (
     <Card className="w-[280px] h-[220px] bg-white hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+        <div className="flex items-center justify-center h-12 w-12 rounded-full bg-[#fffbe3]">
           <Icon className="h-6 w-6 text-red-600" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mt-4">{title}</h3>

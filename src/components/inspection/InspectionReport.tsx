@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ArrowLeft, Download, FileText, Home } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -279,13 +279,22 @@ const InspectionReport = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-10">
         <div className="container mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Voltar
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center text-gray-600"
+            >
+              <ArrowLeft className="h-5 w-5 mr-2" />
+              Voltar
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center text-gray-600"
+            >
+              <Home className="h-5 w-5 mr-2" />
+              Início
+            </button>
+          </div>
         </div>
       </div>
 
