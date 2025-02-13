@@ -2,9 +2,11 @@ import React from "react";
 import { ClipboardList, Building2, Search, Clock } from "lucide-react";
 import FeatureCard from "./FeatureCard";
 
+import { LucideIcon } from "lucide-react";
+
 interface FeatureCardsProps {
   features?: Array<{
-    icon: typeof ClipboardList;
+    icon: LucideIcon;
     title: string;
     description: string;
   }>;

@@ -2,8 +2,10 @@ import React from "react";
 import { Card, CardHeader, CardContent } from "../ui/card";
 import { Smartphone } from "lucide-react";
 
+import { LucideIcon } from "lucide-react";
+
 interface FeatureCardProps {
-  icon?: typeof Smartphone;
+  icon?: LucideIcon;
   title?: string;
   description?: string;
 }

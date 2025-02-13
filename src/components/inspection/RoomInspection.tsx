@@ -30,7 +30,9 @@ import {
   SelectValue,
 } from "../ui/select";
 import { getRoomCategories } from "@/lib/roomCategories";
+import { Database } from "@/types/supabase";
 
+type RoomItem = Database["public"]["Tables"]["room_items"]["Row"];
 type Condition = "bom" | "ruim" | "pessimo";
 
 interface ChecklistItem {
@@ -63,14 +65,13 @@ const RoomInspection = () => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
-  const [categories, setCategories] = React.useState<Category[]>(
-    getRoomCategories(roomName || ""),
-  );
-
-  const [newItemDialogOpen, setNewItemDialogOpen] = React.useState(false);
+  const defaultCategories: Category[] = getRoomCategories(roomName || "");
+  const [categories, setCategories] =
+    React.useState<Category[]>(defaultCategories);
   const [selectedCategory, setSelectedCategory] = React.useState(
-    categories[0]?.id || "eletrica",
+    defaultCategories[0]?.id || "eletrica",
   );
+  const [newItemDialogOpen, setNewItemDialogOpen] = React.useState(false);
   const [newItemName, setNewItemName] = React.useState("");
 
   // Fetch predefined items from the database
@@ -149,7 +150,7 @@ const RoomInspection = () => {
         if (itemsError) throw itemsError;
 
         const itemsMap: Record<string, ChecklistItem> = {};
-        items?.forEach((item) => {
+        items?.forEach((item: RoomItem) => {
           itemsMap[item.id] = {
             name: item.name,
             condition: item.condition as Condition,
@@ -187,7 +188,7 @@ const RoomInspection = () => {
             room_id: roomId,
             name: newItemName,
             category: selectedCategory,
-            condition: "bom",
+            condition: "bom" as const,
           },
         ])
         .select()
@@ -195,16 +196,18 @@ const RoomInspection = () => {
 
       if (error) throw error;
 
-      setChecklistItems((prev) => ({
-        ...prev,
-        [item.id]: {
-          name: item.name,
-          condition: item.condition,
-          description: "",
-          images: [],
-          category: item.category,
-        },
-      }));
+      if (item) {
+        setChecklistItems((prev) => ({
+          ...prev,
+          [item.id]: {
+            name: item.name,
+            condition: item.condition as Condition,
+            description: "",
+            images: [],
+            category: item.category,
+          },
+        }));
+      }
 
       setNewItemName("");
       setNewItemDialogOpen(false);
@@ -392,7 +395,11 @@ const RoomInspection = () => {
                                       condition: value as Condition,
                                     });
                                   }}
-                                  className={`${item.condition === value ? className : ""}`}
+                                  className={
+                                    item.condition === value
+                                      ? className
+                                      : undefined
+                                  }
                                 >
                                   {label}
                                 </Button>
@@ -505,8 +512,8 @@ const RoomInspection = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                {categories.find((c) => c.id === selectedCategory)?.items
-                  .length ? (
+                {(categories.find((c) => c.id === selectedCategory)?.items
+                  .length ?? 0) > 0 ? (
                   <Select value={newItemName} onValueChange={setNewItemName}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o item" />
