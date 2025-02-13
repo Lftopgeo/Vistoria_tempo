@@ -3,11 +3,19 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Textarea } from "../ui/textarea";
-import { ArrowLeft, Camera, Image } from "lucide-react";
+import { Input } from "../ui/input";
+import { ArrowLeft, Camera, Image, Plus, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../ui/dialog";
 
 type Condition = "bom" | "ruim" | "pessimo";
 
@@ -40,6 +48,14 @@ const RoomInspection = () => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
+  // New state for dialogs
+  const [newCategoryDialogOpen, setNewCategoryDialogOpen] =
+    React.useState(false);
+  const [newItemDialogOpen, setNewItemDialogOpen] = React.useState(false);
+  const [selectedCategory, setSelectedCategory] = React.useState("");
+  const [newCategoryName, setNewCategoryName] = React.useState("");
+  const [newItemName, setNewItemName] = React.useState("");
+
   // Fetch inspection categories for the room type
   useEffect(() => {
     const fetchCategories = async () => {
@@ -49,6 +65,12 @@ const RoomInspection = () => {
         .eq("room_type", roomId)
         .order("category", { ascending: true })
         .order("name", { ascending: true });
+
+      // Remove duplicates based on name
+      const uniqueData = data?.filter(
+        (item, index, self) =>
+          index === self.findIndex((t) => t.name === item.name),
+      );
 
       if (error) {
         console.error("Error fetching categories:", error);
@@ -60,7 +82,7 @@ const RoomInspection = () => {
         return;
       }
 
-      if (!data || data.length === 0) {
+      if (!uniqueData || uniqueData.length === 0) {
         toast({
           variant: "destructive",
           title: "Sem itens para vistoria",
@@ -70,75 +92,178 @@ const RoomInspection = () => {
         return;
       }
 
-      setCategories(data);
+      setCategories(uniqueData);
     };
 
     fetchCategories();
   }, [roomId, toast]);
 
-  useEffect(() => {
-    const fetchCurrentInspection = async () => {
-      if (!user) return;
+  // Handle adding new category
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
 
+    try {
       const { data, error } = await supabase
-        .from("inspections")
-        .select("id")
-        .eq("inspector_id", user.id)
-        .eq("status", "in_progress")
-        .order("created_at", { ascending: false })
-        .limit(1)
+        .from("inspection_item_categories")
+        .insert([
+          {
+            room_type: roomId,
+            category: newCategoryName,
+            name: newCategoryName,
+          },
+        ])
+        .select()
         .single();
 
-      if (error) {
-        console.error("Error fetching current inspection:", error);
-        return;
-      }
+      if (error) throw error;
 
-      setCurrentInspection(data.id);
-    };
+      setCategories([...categories, data]);
+      setNewCategoryDialogOpen(false);
+      setNewCategoryName("");
 
-    fetchCurrentInspection();
-  }, [user]);
+      toast({
+        title: "Categoria adicionada",
+        description: "Nova categoria criada com sucesso.",
+      });
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao adicionar categoria",
+        description: "Não foi possível criar a nova categoria.",
+      });
+    }
+  };
 
-  const handleConditionSelect = (item: string, condition: Condition) => {
+  // Handle adding new item
+  const handleAddItem = async () => {
+    if (!newItemName.trim() || !selectedCategory) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("inspection_item_categories")
+        .insert([
+          {
+            room_type: roomId,
+            category: selectedCategory,
+            name: newItemName,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCategories([...categories, data]);
+      setNewItemDialogOpen(false);
+      setNewItemName("");
+      setSelectedCategory("");
+
+      toast({
+        title: "Item adicionado",
+        description: "Novo item criado com sucesso.",
+      });
+    } catch (error) {
+      console.error("Error adding item:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao adicionar item",
+        description: "Não foi possível criar o novo item.",
+      });
+    }
+  };
+
+  // Handle deleting category
+  const handleDeleteCategory = async (category: string) => {
+    try {
+      const { error } = await supabase
+        .from("inspection_item_categories")
+        .delete()
+        .eq("room_type", roomId)
+        .eq("category", category);
+
+      if (error) throw error;
+
+      setCategories(categories.filter((item) => item.category !== category));
+      toast({
+        title: "Categoria removida",
+        description: "Categoria removida com sucesso.",
+      });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao remover categoria",
+        description: "Não foi possível remover a categoria.",
+      });
+    }
+  };
+
+  // Handle deleting item
+  const handleDeleteItem = async (itemName: string) => {
+    try {
+      const { error } = await supabase
+        .from("inspection_item_categories")
+        .delete()
+        .eq("room_type", roomId)
+        .eq("name", itemName);
+
+      if (error) throw error;
+
+      setCategories(categories.filter((item) => item.name !== itemName));
+      toast({
+        title: "Item removido",
+        description: "Item removido com sucesso.",
+      });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao remover item",
+        description: "Não foi possível remover o item.",
+      });
+    }
+  };
+
+  const handleConditionSelect = (itemName: string, condition: Condition) => {
     setChecklistItems((prev) => ({
       ...prev,
-      [item]: {
-        ...prev[item],
-        name: item,
+      [itemName]: {
+        ...prev[itemName],
+        name: itemName,
         condition,
-        images: prev[item]?.images || [],
-        description: prev[item]?.description,
+        images: prev[itemName]?.images || [],
       },
     }));
   };
 
-  const handleDescriptionChange = (item: string, description: string) => {
+  const handleDescriptionChange = (itemName: string, description: string) => {
     setChecklistItems((prev) => ({
       ...prev,
-      [item]: {
-        ...prev[item],
-        name: item,
+      [itemName]: {
+        ...prev[itemName],
+        name: itemName,
         description,
-        images: prev[item]?.images || [],
-        condition: prev[item]?.condition || "bom",
+        images: prev[itemName]?.images || [],
+        condition: prev[itemName]?.condition || "bom",
       },
     }));
   };
 
   const handleImageUpload = async (
-    item: string,
-    event: React.ChangeEvent<HTMLInputElement>,
+    itemName: string,
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
 
     try {
+      setLoading(true);
       const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${roomId}/${itemName}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data } = await supabase.storage
         .from("inspection-images")
         .upload(filePath, file);
 
@@ -150,106 +275,92 @@ const RoomInspection = () => {
 
       setChecklistItems((prev) => ({
         ...prev,
-        [item]: {
-          ...prev[item],
-          name: item,
-          images: [...(prev[item]?.images || []), publicUrl],
-          condition: prev[item]?.condition || "bom",
+        [itemName]: {
+          ...prev[itemName],
+          name: itemName,
+          images: [...(prev[itemName]?.images || []), publicUrl],
+          condition: prev[itemName]?.condition || "bom",
         },
       }));
+
+      toast({
+        title: "Imagem adicionada",
+        description: "A imagem foi adicionada com sucesso.",
+      });
     } catch (error) {
       console.error("Error uploading image:", error);
       toast({
         variant: "destructive",
-        title: "Erro ao fazer upload da imagem",
-        description: "Tente novamente.",
+        title: "Erro ao enviar imagem",
+        description: "Não foi possível enviar a imagem. Tente novamente.",
       });
+    } finally {
+      setLoading(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
     }
   };
 
   const handleSave = async () => {
-    if (!currentInspection || !user) {
+    if (!user || !currentInspection) {
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
-        description: "Nenhuma inspeção ativa encontrada.",
+        description: "Sessão inválida. Por favor, faça login novamente.",
       });
       return;
     }
 
     setLoading(true);
     try {
-      console.log("Iniciando salvamento da sala...");
+      // Save each item to the database
+      for (const [itemName, itemData] of Object.entries(checklistItems)) {
+        const { data: roomItem, error: roomItemError } = await supabase
+          .from("room_items")
+          .insert([
+            {
+              room_id: roomId,
+              name: itemName,
+              condition: itemData.condition,
+              description: itemData.description || "",
+              category:
+                categories.find((cat) => cat.name === itemName)?.category ||
+                "geral",
+            },
+          ])
+          .select()
+          .single();
 
-      // 1. Criar a sala
-      const { data: roomData, error: roomError } = await supabase
-        .from("rooms")
-        .insert([
-          {
-            inspection_id: currentInspection,
-            name: roomId,
-            description: `Vistoria do ${roomId}`,
-            image_url: null,
-          },
-        ])
-        .select()
-        .single();
+        if (roomItemError) throw roomItemError;
 
-      if (roomError) throw roomError;
-      console.log("Sala criada:", roomData);
+        // Save images for this item
+        if (itemData.images && itemData.images.length > 0) {
+          const imageRecords = itemData.images.map((imageUrl) => ({
+            item_id: roomItem.id,
+            image_url: imageUrl,
+          }));
 
-      // 2. Preparar os itens para inserção
-      const itemsToInsert = Object.entries(checklistItems).map(
-        ([name, item]) => ({
-          room_id: roomData.id,
-          category:
-            categories.find((c) => c.name === name)?.category || "geral",
-          subcategory: categories.find((c) => c.name === name)?.subcategory,
-          name,
-          condition: item.condition,
-          description: item.description || "",
-        }),
-      );
+          const { error: imagesError } = await supabase
+            .from("item_images")
+            .insert(imageRecords);
 
-      // 3. Inserir todos os itens de uma vez
-      const { data: insertedItems, error: itemsError } = await supabase
-        .from("room_items")
-        .insert(itemsToInsert)
-        .select();
-
-      if (itemsError) throw itemsError;
-      console.log("Itens inseridos:", insertedItems);
-
-      // 4. Preparar e inserir as imagens
-      const imagesToInsert = insertedItems.flatMap((roomItem) => {
-        const item = checklistItems[roomItem.name];
-        return (item?.images || []).map((image_url) => ({
-          item_id: roomItem.id,
-          image_url,
-        }));
-      });
-
-      if (imagesToInsert.length > 0) {
-        console.log("Inserindo imagens:", imagesToInsert);
-        const { error: imagesError } = await supabase
-          .from("item_images")
-          .insert(imagesToInsert);
-
-        if (imagesError) throw imagesError;
+          if (imagesError) throw imagesError;
+        }
       }
 
       toast({
         title: "Vistoria salva",
-        description: "A vistoria do ambiente foi salva com sucesso.",
+        description: "Os dados da vistoria foram salvos com sucesso.",
       });
 
       navigate("/property-environments");
-    } catch (error: any) {
-      console.error("Erro ao salvar vistoria:", error);
+    } catch (error) {
+      console.error("Error saving inspection:", error);
       toast({
         variant: "destructive",
-        title: "Erro ao salvar vistoria",
-        description: error.message || "Ocorreu um erro ao salvar a vistoria.",
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar os dados da vistoria.",
       });
     } finally {
       setLoading(false);
@@ -281,19 +392,49 @@ const RoomInspection = () => {
 
         <div className="space-y-6">
           <Card className="p-6 border-[#de9619]">
-            <div className="flex gap-4 items-start">
+            <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-2xl font-semibold capitalize">{roomId}</h2>
                 <p className="text-gray-600">Vistoria detalhada do ambiente</p>
               </div>
+              <Button
+                onClick={() => setNewCategoryDialogOpen(true)}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Categoria
+              </Button>
             </div>
           </Card>
 
           {Object.entries(groupedCategories).map(([category, items]) => (
             <Card key={category} className="p-6">
-              <h3 className="text-lg font-semibold capitalize mb-4 flex">
-                {category.replace("_", " ")}
-              </h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg capitalize font-black text-[#041a51]">
+                  {category.replace("_", " ")}
+                </h3>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedCategory(category);
+                      setNewItemDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Item
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDeleteCategory(category)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
               <div className="space-y-6">
                 {items.map((item) => {
                   const itemData = checklistItems[item.name] || {};
@@ -303,23 +444,33 @@ const RoomInspection = () => {
                       className="space-y-4 pb-4 border-b border-gray-200 last:border-0"
                     >
                       <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          {itemData.condition && (
-                            <Badge
-                              variant="outline"
-                              className={`mt-2 ${
-                                itemData.condition === "bom"
-                                  ? "bg-green-100 text-green-800"
-                                  : itemData.condition === "ruim"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {itemData.condition.charAt(0).toUpperCase() +
-                                itemData.condition.slice(1)}
-                            </Badge>
-                          )}
+                        <div className="flex items-start gap-4">
+                          <div className="text-[#3f4249]">
+                            <p className="font-medium">{item.name}</p>
+                            {itemData.condition && (
+                              <Badge
+                                variant="outline"
+                                className={`mt-2 ${
+                                  itemData.condition === "bom"
+                                    ? "bg-green-100 text-green-800"
+                                    : itemData.condition === "ruim"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {itemData.condition.charAt(0).toUpperCase() +
+                                  itemData.condition.slice(1)}
+                              </Badge>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 mt-1"
+                            onClick={() => handleDeleteItem(item.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                         <div className="flex gap-2">
                           <Button
@@ -366,7 +517,7 @@ const RoomInspection = () => {
                           </Button>
                         </div>
                       </div>
-
+                      {/* Rest of the item content */}
                       <div className="space-y-4">
                         <Textarea
                           placeholder="Adicione observações sobre este item..."
@@ -376,7 +527,7 @@ const RoomInspection = () => {
                           }
                         />
 
-                        <div className="flex gap-4 items-center">
+                        <div className="flex gap-4 items-center text-[#57498c]">
                           <input
                             type="file"
                             accept="image/*"
@@ -433,6 +584,71 @@ const RoomInspection = () => {
           ))}
         </div>
       </div>
+      {/* New Category Dialog */}
+      <Dialog
+        open={newCategoryDialogOpen}
+        onOpenChange={setNewCategoryDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Categoria</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Input
+                placeholder="Nome da categoria"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNewCategoryDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleAddCategory}
+            >
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* New Item Dialog */}
+      <Dialog open={newItemDialogOpen} onOpenChange={setNewItemDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Input
+                placeholder="Nome do item"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNewItemDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleAddItem}
+            >
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
         <div className="container mx-auto">
           <Button
