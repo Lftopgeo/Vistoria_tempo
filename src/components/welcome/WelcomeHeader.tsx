@@ -4,7 +4,9 @@ interface WelcomeHeaderProps {
   logoText?: string;
 }
 
-const WelcomeHeader = ({ logoText = "GeoApp" }: WelcomeHeaderProps) => {
+const WelcomeHeader: React.FC<WelcomeHeaderProps> = ({
+  logoText = "GeoApp",
+}) => {
   return (
     <header className="relative w-full h-[280px] bg-[#1A1A1A] overflow-hidden">
       {/* Background Image */}

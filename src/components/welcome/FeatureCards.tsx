@@ -1,7 +1,6 @@
 import React from "react";
 import { ClipboardList, Building2, Search, Clock } from "lucide-react";
 import FeatureCard from "./FeatureCard";
-
 import { LucideIcon } from "lucide-react";
 
 interface Feature {
@@ -15,8 +14,8 @@ interface FeatureCardsProps {
   className?: string;
 }
 
-const FeatureCards = ({ features }: FeatureCardsProps) => {
-  const defaultFeatures = [
+const FeatureCards: React.FC<FeatureCardsProps> = ({ features }) => {
+  const defaultFeatures: Feature[] = [
     {
       icon: ClipboardList,
       title: "Vistorias Detalhadas",

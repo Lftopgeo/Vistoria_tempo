@@ -1,7 +1,6 @@
 import React from "react";
 import { Card, CardHeader, CardContent } from "../ui/card";
 import { Smartphone } from "lucide-react";
-
 import { LucideIcon } from "lucide-react";
 
 interface FeatureCardProps {
@@ -11,11 +10,11 @@ interface FeatureCardProps {
   className?: string;
 }
 
-const FeatureCard = ({
+const FeatureCard: React.FC<FeatureCardProps> = ({
   icon: Icon = Smartphone,
   title = "Feature Title",
   description = "This is a sample feature description that highlights the benefits of using our app.",
-}: FeatureCardProps) => {
+}) => {
   return (
     <Card className="w-[280px] h-[220px] bg-white hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="pb-2">
