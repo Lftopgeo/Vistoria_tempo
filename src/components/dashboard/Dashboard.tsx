@@ -14,9 +14,9 @@ import {
   Trash2,
   AlertCircle,
 } from "lucide-react";
-import { Calendar } from "./../ui/calendar";
-import { Database } from "@/types/supabase";
-import { useToast } from "@/components/ui/use-toast";
+import { Calendar } from "../ui/calendar";
+import type { Database } from "@/types/supabase";
+import { useToast } from "../ui/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +26,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "../ui/alert-dialog";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type Inspection = Database["public"]["Tables"]["inspections"]["Row"] & {
@@ -87,7 +87,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     if (inspection.status === "completed") {
       navigate(`/inspection-report/${inspection.id}`);
     } else {
-      navigate(`/property-environments`);
+      navigate("/property-environments");
     }
   };
 
@@ -100,18 +100,15 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     if (!inspectionToDelete) return;
 
     try {
-      // Delete related records first
       const inspection = inspections.find((i) => i.id === inspectionToDelete);
       if (!inspection) return;
 
-      // Get all rooms for this inspection
       const { data: rooms } = await supabase
         .from("rooms")
         .select("id")
         .eq("inspection_id", inspectionToDelete);
 
       if (rooms) {
-        // Delete room items and their images
         for (const room of rooms) {
           const { data: roomItems } = await supabase
             .from("room_items")
@@ -119,7 +116,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             .eq("room_id", room.id);
 
           if (roomItems) {
-            // Delete item images
             for (const item of roomItems) {
               await supabase
                 .from("item_images")
@@ -127,19 +123,16 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                 .eq("item_id", item.id);
             }
 
-            // Delete room items
             await supabase.from("room_items").delete().eq("room_id", room.id);
           }
         }
 
-        // Delete rooms
         await supabase
           .from("rooms")
           .delete()
           .eq("inspection_id", inspectionToDelete);
       }
 
-      // Finally delete the inspection
       const { error } = await supabase
         .from("inspections")
         .delete()

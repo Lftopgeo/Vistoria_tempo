@@ -3,21 +3,21 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 
-type AuthContextType = {
+interface AuthContextType {
   session: Session | null;
   user: User | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
-};
+}
 
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
-
-export default function AuthProvider({
-  children,
-}: {
+interface AuthProviderProps {
   children: React.ReactNode;
-}) {
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export default function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,7 @@ export default function AuthProvider({
     if (error) throw error;
   };
 
-  const signOut = async () => {
+  const signOut = async (): Promise<void> => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };
@@ -72,7 +72,7 @@ export default function AuthProvider({
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");

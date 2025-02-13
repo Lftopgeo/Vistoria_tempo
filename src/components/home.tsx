@@ -7,7 +7,7 @@ interface HomeProps {
   onGetStarted?: () => void;
 }
 
-const Home = ({ onGetStarted }: HomeProps) => {
+const Home: React.FC<HomeProps> = ({ onGetStarted }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       <WelcomeHeader />
